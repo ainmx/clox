@@ -7,12 +7,16 @@
 
 #define STACK_MAX 256
 
+
 typedef struct {
     Chunk* chunk;
     uint8_t* ip; //instruction pointer
     Value stack[STACK_MAX];
     Value* stackTop;
+    Obj* objects;
 } VM;
+
+extern VM vm;
 
 void init_vm();
 void free_vm();

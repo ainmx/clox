@@ -4,6 +4,7 @@
 #include "common.h"
 #include "compiler.h"
 #include "value.h"
+#include "object.h"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
@@ -134,6 +135,7 @@ static void unary();
 static void number();
 static void grouping();
 static void literal();
+static void string();
 
 ParseRule rules[] = {
     [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
@@ -156,7 +158,7 @@ ParseRule rules[] = {
     [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
-    [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
+    [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
     [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
     [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
     [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
@@ -215,6 +217,11 @@ static void number() {
     emit_constant(NUMBER_VAL(value));
 }
 
+static void string() {
+    // copy string without leading and trailing quotes
+    emit_constant(OBJ_VAL(copy_string(parser.previous.start + 1,
+                                      parser.previous.length - 2)));
+}
 
 static void unary() {
     TokenType operator_type = parser.previous.type;
@@ -222,8 +229,8 @@ static void unary() {
     parse_precedence(PREC_UNARY);
 
     switch (operator_type) {
-        case TOKEN_BANG: emit_byte(OP_NOT); break;
-        case TOKEN_MINUS: emit_byte(OP_NEGATE); break;
+        case TOKEN_BANG:            emit_byte(OP_NOT); break;
+        case TOKEN_MINUS:           emit_byte(OP_NEGATE); break;
         default: return; // Unreachable
     }
 }
@@ -234,25 +241,25 @@ static void binary() {
     parse_precedence((Precedence)(rule->precedence + 1));
 
     switch (operator_type) {
-		case TOKEN_BANG_EQUAL:    emit_bytes(OP_EQUAL, OP_NOT); break;
-		case TOKEN_EQUAL_EQUAL:   emit_byte(OP_EQUAL); break;
-		case TOKEN_GREATER:       emit_byte(OP_GREATER); break;
-		case TOKEN_GREATER_EQUAL: emit_bytes(OP_LESS, OP_NOT); break;
-		case TOKEN_LESS:          emit_byte(OP_LESS); break;
-		case TOKEN_LESS_EQUAL:    emit_bytes(OP_GREATER, OP_NOT); break;
-        case TOKEN_PLUS: emit_byte(OP_ADD); break;
-        case TOKEN_MINUS: emit_byte(OP_SUBTRACT); break;
-        case TOKEN_STAR: emit_byte(OP_MULTIPLY); break;
-        case TOKEN_SLASH: emit_byte(OP_DIVIDE); break;
+		case TOKEN_BANG_EQUAL:      emit_bytes(OP_EQUAL, OP_NOT); break;
+		case TOKEN_EQUAL_EQUAL:     emit_byte(OP_EQUAL); break;
+		case TOKEN_GREATER:         emit_byte(OP_GREATER); break;
+		case TOKEN_GREATER_EQUAL:   emit_bytes(OP_LESS, OP_NOT); break;
+        case TOKEN_LESS:            emit_byte(OP_LESS); break;
+		case TOKEN_LESS_EQUAL:      emit_bytes(OP_GREATER, OP_NOT); break;
+        case TOKEN_PLUS:            emit_byte(OP_ADD); break;
+        case TOKEN_MINUS:           emit_byte(OP_SUBTRACT); break;
+        case TOKEN_STAR:            emit_byte(OP_MULTIPLY); break;
+        case TOKEN_SLASH:           emit_byte(OP_DIVIDE); break;
         default: return; // Unreachable
     }
 }
 
-static void literal(){
+static void literal() {
 	switch (parser.previous.type) {
-		case TOKEN_NIL: emit_byte(OP_NIL); break;
-		case TOKEN_FALSE: emit_byte(OP_FALSE); break;
-		case TOKEN_TRUE: emit_byte(OP_TRUE); break;
+		case TOKEN_NIL:             emit_byte(OP_NIL); break;
+		case TOKEN_FALSE:           emit_byte(OP_FALSE); break;
+		case TOKEN_TRUE:            emit_byte(OP_TRUE); break;
 		default: return; // Unreachable
 	}
 }
